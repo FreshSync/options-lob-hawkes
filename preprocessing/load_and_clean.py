@@ -50,7 +50,10 @@ def load_and_clean(
         changed = (g_nbbo[nbbo_cols] != prev).any(axis=1)
         # Keep first row (previous is NaN so nothing to compare)
         changed.iloc[0] = True
-        g_clean = g_nbbo[changed].copy()
+        # Also keep trade events regardless of NBBO change
+        is_trade = g_nbbo["action"] == "T"
+        keep = changed | is_trade
+        g_clean = g_nbbo[keep].copy()
 
         # Compute mid-price and spread
         g_clean["mid_px"] = (g_clean["bid_px_00"] + g_clean["ask_px_00"]) / 2
