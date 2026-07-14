@@ -10,6 +10,9 @@ data/raw/
 data/processed/
 *.parquet
 
+checkpoints/
+*.pt
+
 data/sequences/
 *.npz
 
