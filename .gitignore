@@ -10,6 +10,9 @@ data/raw/
 data/processed/
 *.parquet
 
+data/sequences/
+*.npz
+
 # Distribution / packaging
 .Python
 build/
