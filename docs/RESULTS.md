@@ -55,3 +55,32 @@ Best val F1 across epochs: 0.5042 (epoch 10)
 - Random 70/15/15 split, not temporal. Real paper needs temporal splitting.
 
 **Checkpoint:** `checkpoints/tlob_options_20260714_125914.pt` (on Colab Drive)
+
+## 2026-07-14: Stage 2b - TLOB + TTE as 5th feature
+
+**Purpose:** Test whether TTE-as-feature (vs TTE-as-architecture) improves direction prediction. This is the critical control baseline in the paper's ablation table.
+
+**Data:** Same 1-hour smoke test as Stage 2a, but with log(tte_days + 1) as 5th input feature. Sequence shape (N, 128, 5) instead of (N, 128, 4).
+
+**Model config:** Same as Stage 2a except num_features=5 (1,134,504 parameters vs 1,134,462).
+
+**Test results:**
+| Metric | Value | Δ vs Stage 2a |
+|---|---|---|
+| Macro F1 | 0.5089 | +0.0025 |
+| Accuracy | 0.6219 | -0.0182 |
+| Down F1 | 0.3807 | -0.0147 |
+| Stable F1 | 0.7349 | -0.0198 |
+| Up F1 | 0.4111 | +0.0420 |
+
+Best val F1: 0.5057 (epoch 10, still improving)
+
+**Notes:**
+
+- Adding TTE as a raw input feature barely helped macro F1 (+0.0025, within seed noise).
+- Class-level effect concentrated in "up" prediction (+0.042); other classes marginally worse.
+- With only 3 TTE clusters (2.4d, 30d, 93d), model may already be inferring TTE from other features (spread scale, price level).
+- On real data with continuous TTE variation, effect may differ. Repeat with 12-month data before drawing conclusions.
+- Result supports paper's story: TTE-as-feature is a weak baseline; architectural TTE conditioning (Hawkes-NN) needs to beat this modest number to demonstrate value.
+
+**Checkpoint:** `checkpoints/tlob_options_tte_20260714_133230.pt`
