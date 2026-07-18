@@ -84,3 +84,32 @@ Best val F1: 0.5057 (epoch 10, still improving)
 - Result supports paper's story: TTE-as-feature is a weak baseline; architectural TTE conditioning (Hawkes-NN) needs to beat this modest number to demonstrate value.
 
 **Checkpoint:** `checkpoints/tlob_options_tte_20260714_133230.pt`
+
+## 2026-07-18: Stage 2c diagnostic - TLOB-Hawkes with hawkes_weight=0.0
+
+**Purpose:** Diagnose whether earlier TLOB-Hawkes underperformance (F1=0.29 to 0.40 across two runs) was caused by architecture or by Hawkes loss competing for gradient.
+
+**Setup:** Same smoke test data, same 70/15/15 split. Rewrote TLOBHawkes model with:
+
+- Direction head using TLOB's exact flattening + MLP structure (fixed from broken last-token pooling)
+- Hawkes head as separate branch reading from pre-final-compression encoder output
+- No shared post-encoder weights between direction and Hawkes branches
+
+Trained with hawkes_weight=0.0 (Hawkes head parameters exist but don't affect training gradient).
+
+**Test results:**
+| Metric | Value | Δ vs vanilla TLOB |
+|---|---|---|
+| Macro F1 | 0.4846 | -0.0218 |
+| Accuracy | 0.6246 | -0.0155 |
+| Best val F1 | 0.4816 | -0.0226 |
+
+**Notes:**
+
+- CE loss trajectory (0.91 → 0.73) now matches vanilla TLOB (0.92 → 0.71).
+- Slight F1 delta vs vanilla within seed noise.
+- Confirms previous failures (F1=0.29 with λ=1.0, F1=0.40 with λ=0.01) were architectural, not loss weighting.
+- Root cause was last-token pooling in the direction head, discarding sequence information TLOB relies on.
+- Fixed architecture ready for turning Hawkes loss back on in subsequent runs.
+
+**Next:** Turn hawkes_weight to small positive value (e.g., 0.01, 0.001) and see if joint training helps or hurts direction F1 relative to this baseline.
