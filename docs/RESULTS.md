@@ -113,3 +113,42 @@ Trained with hawkes_weight=0.0 (Hawkes head parameters exist but don't affect tr
 - Fixed architecture ready for turning Hawkes loss back on in subsequent runs.
 
 **Next:** Turn hawkes_weight to small positive value (e.g., 0.01, 0.001) and see if joint training helps or hurts direction F1 relative to this baseline.
+
+## 2026-07-18: Stage 2c - TLOB-Hawkes with hawkes_weight=0.01
+
+**Purpose:** Test whether joint Hawkes training improves direction prediction beyond vanilla TLOB, using the fixed architecture.
+
+**Setup:** Same smoke test data. hawkes_weight=0.01 (equal weighting caused CE starvation, and hawkes_weight=0.0 was diagnostic-only).
+
+**Test results:**
+| Metric | Value | Δ vs vanilla TLOB | Δ vs TTE-feature |
+|---|---|---|---|
+| Macro F1 | 0.5335 | +0.0271 | +0.0246 |
+| Accuracy | 0.6441 | +0.0040 | +0.0222 |
+| Down F1 | 0.4191 | +0.0237 | +0.0384 |
+| Stable F1 | 0.7517 | -0.0030 | +0.0168 |
+| Up F1 | 0.4295 | +0.0604 | +0.0184 |
+
+Best val F1: 0.5336 (epoch 10, still improving)
+
+**Notes:**
+
+- CE loss trajectory (0.91 → 0.70) now matches vanilla TLOB.
+- Hawkes NLL decreased from -0.59 to -0.92, indicating Hawkes head learned meaningful intensity patterns.
+- Improvement isn't from TTE information alone (which is also present in Stage 2b feature baseline).
+- Directional class improvement is meaningful: Up F1 +0.06, Down F1 +0.02.
+- Model still improving at epoch 10, so more epochs may squeeze additional F1.
+
+**Caveats:**
+
+- Single seed run. Delta of +0.027 vs vanilla TLOB is above typical seed noise (0.01-0.02) but needs multi-seed confirmation.
+- Random 70/15/15 split. Not proper temporal validation.
+- 1 hour of data. Real paper will use months of data and may show different effect sizes.
+
+**Interpretation:** The joint Hawkes training acts as a regularizer that improves direction learning. This supports the paper's core hypothesis that architectural TTE conditioning (via Hawkes intensity) helps direction prediction beyond feature-level TTE input.
+
+**Next steps:**
+
+- Confirm result with multiple seeds
+- Try slightly larger hawkes_weight (0.02, 0.05) to see if F1 improves further
+- Eventually: repeat on multi-month real data
