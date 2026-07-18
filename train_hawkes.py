@@ -5,6 +5,7 @@ Reads:  data/sequences/spx_smoke_2025-06-17_hawkes/sequences.npz
 Writes: checkpoints/tlob_hawkes_<timestamp>.pt
 
 Joint loss: direction cross-entropy + Hawkes NLL on next-event prediction.
+Training uses early stopping on validation macro F1.
 """
 
 import time
@@ -74,7 +75,8 @@ def train():
     npz_path = "data/sequences/spx_smoke_2025-06-17_hawkes/sequences.npz"
     batch_size = 256
     lr = 1e-4
-    num_epochs = 10
+    num_epochs = 50           # max epochs; early stopping usually cuts it short
+    early_stop_patience = 5   # stop if val_f1 hasn't improved for this many epochs
     seq_size = 128
     num_features = 5  # 4 LOB + 1 log-TTE
     hidden_dim = 40
@@ -113,6 +115,8 @@ def train():
 
     print("\nTraining...")
     best_val_f1 = 0.0
+    best_epoch = 0
+    epochs_since_improvement = 0
     ckpt_dir = Path("checkpoints")
     ckpt_dir.mkdir(exist_ok=True)
     timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -139,7 +143,6 @@ def train():
             ce = ce_loss_fn(dir_logits, y)
             hnll = hawkes_nll_loss(log_intensity, nxt_type, nxt_dt)
 
-            # Equal weighting (as per design decision)
             hawkes_weight = 0.05
             loss = ce + hawkes_weight * hnll
             loss.backward()
@@ -195,8 +198,16 @@ def train():
 
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
+            best_epoch = epoch + 1
+            epochs_since_improvement = 0
             torch.save(model.state_dict(), ckpt_path)
-            print(f"  Saved checkpoint")
+            print(f"  Saved checkpoint (best val_f1 so far)")
+        else:
+            epochs_since_improvement += 1
+            if epochs_since_improvement >= early_stop_patience:
+                print(f"  Early stopping: no val_f1 improvement for {early_stop_patience} epochs")
+                print(f"  Best epoch was {best_epoch} with val_f1={best_val_f1:.4f}")
+                break
 
     # Test
     print(f"\nLoading best checkpoint from {ckpt_path}")
@@ -222,7 +233,7 @@ def train():
                                 target_names=["down", "stable", "up"]))
     test_f1 = f1_score(test_labels, test_preds, average="macro")
     print(f"Macro F1: {test_f1:.4f}")
-    print(f"Best val F1: {best_val_f1:.4f}")
+    print(f"Best val F1 at epoch {best_epoch}: {best_val_f1:.4f}")
 
 
 if __name__ == "__main__":
