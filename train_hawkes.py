@@ -140,7 +140,7 @@ def train():
             hnll = hawkes_nll_loss(log_intensity, nxt_type, nxt_dt)
 
             # Equal weighting (as per design decision)
-            hawkes_weight = 0.01
+            hawkes_weight = 0.05
             loss = ce + hawkes_weight * hnll
             loss.backward()
             optimizer.step()
